@@ -1,0 +1,51 @@
+name: ecommerce-demo
+
+services:
+  mysql:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_DATABASE:-ecommerce}
+      MYSQL_USER: ${DB_USERNAME:-ecommerce}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      # Cổng 3307 trên máy bạn, tránh đụng MySQL cài sẵn ở 3306
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    depends_on:
+      mysql:
+        condition: service_healthy # đợi MySQL sẵn sàng mới chạy Laravel
+    ports:
+      - "${BACKEND_PORT:-8080}:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    # Lần đầu copy .env từ mẫu, cài package, rồi chạy Vite dev server
+    command: sh -c "[ -f .env ] || cp .env.example .env; npm install && npm run dev"
+    environment:
+      # Bind mount từ Windows không phát sự kiện file-change -> phải bật polling để HMR hoạt động
+      VITE_USE_POLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  mysql_data:
+  backend_vendor:
+  frontend_node_modules:

@@ -1,0 +1,116 @@
+name: CI
+
+# Chạy khi push lên bất kỳ nhánh nào và khi mở/cập nhật pull request
+on:
+  push:
+  pull_request:
+
+# Chỉ cấp quyền đọc code: workflow này không cần ghi gì vào repo
+permissions:
+  contents: read
+
+# Push mới lên cùng nhánh thì huỷ lần chạy cũ đang dở (tiết kiệm thời gian chạy)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (PHPUnit + MySQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    # MySQL chạy như một container phụ, giống môi trường thật hơn SQLite
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root # chỉ tồn tại trong runner tạm thời, không phải bí mật thật
+          MYSQL_DATABASE: ecommerce_test
+        ports:
+          - 3306:3306
+        # Job chỉ bắt đầu khi MySQL báo healthy, tránh lỗi "connection refused" lúc đầu
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+          tools: composer:v2
+
+      - name: Lấy thư mục cache của Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache package Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      # Dùng đúng phiên bản trong composer.lock, không tự cập nhật
+      - name: Cài package
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Tạo .env và APP_KEY
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Kiểm tra code style (Pint)
+        run: ./vendor/bin/pint --test
+
+      # Biến môi trường thật có ưu tiên hơn giá trị sqlite mặc định trong phpunit.xml
+      - name: Chạy test
+        run: php artisan test
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ecommerce_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # cùng phiên bản với image node:22-alpine trong docker-compose
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci: cài đúng theo package-lock.json và báo lỗi nếu lock lệch package.json (khác `npm install`)
+      - name: Cài package
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:8080/api

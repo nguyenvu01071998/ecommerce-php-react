@@ -1,0 +1,17 @@
+# Mỗi tuần Dependabot mở pull request nâng cấp package (CI sẽ tự chạy để kiểm tra), kể cả các action trong workflow
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: composer
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly

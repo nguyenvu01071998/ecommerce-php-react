@@ -1,0 +1,21 @@
+# Bí mật: KHÔNG bao giờ commit file .env thật (chỉ commit .env.example)
+.env
+.env.*
+!.env.example
+
+# Dependencies (đã cài trong Docker volume nhưng vẫn ignore phòng khi cài local)
+vendor/
+node_modules/
+
+# Build / IDE / OS
+dist/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Cấu hình cục bộ của Claude Code
+.claude/settings.local.json
+
+# Tài liệu cá nhân, không đưa lên repo công khai
+HUONG_DAN_PHONG_VAN.md

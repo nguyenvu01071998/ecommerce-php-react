@@ -1,0 +1,10 @@
+Nguồn: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+Phiên bản: 2.15.0 (commit d14efff)
+Giấy phép: MIT (xem LICENSE)
+Cài thủ công bằng cách chép thư mục .claude/skills/ui-ux-pro-max, bỏ scripts/tests.
+
+Cách chạy khi máy chưa cài Python (dùng Docker, mount chỉ đọc, chạy từ thư mục gốc dự án, PowerShell):
+  docker run --rm -v "${PWD}/.claude/skills/ui-ux-pro-max:/skill:ro" python:3.12-slim python /skill/scripts/search.py "ecommerce product card" --domain ux
+  docker run --rm -v "${PWD}/.claude/skills/ui-ux-pro-max:/skill:ro" python:3.12-slim python /skill/scripts/search.py "list key lazy" --stack react
+Nếu đã có Python 3: python .claude/skills/ui-ux-pro-max/scripts/search.py "<từ khoá>" --domain ux
+Ghi chú: SKILL.md gốc dùng biến ${CLAUDE_PLUGIN_ROOT} (cài kiểu plugin). Với cài thủ công trong dự án, dùng đường dẫn tương đối ở trên.
